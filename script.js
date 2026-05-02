@@ -73,11 +73,6 @@ class Trie {
 
         return matches.sort((a, b) => b.weight - a.weight);
     }
-
-    exactSearch(word) {
-        const node = this.findPrefixNode(word);
-        return node && node.isEndOfWord;
-    }
 }
 
 // Initialize
@@ -196,12 +191,34 @@ function learnCompletedWord(textarea) {
     }
 }
 
-function applySuggestion(item, start, end) {
+function applyCasing(word, typed) {
+    if (!typed) return word;
+
+    const isUpper = typed === typed.toUpperCase();
+    const isCapitalized = typed[0] === typed[0].toUpperCase() && typed.slice(1) === typed.slice(1).toLowerCase();
+
+    if (isUpper) return word.toUpperCase();
+    if (isCapitalized) return word[0].toUpperCase() + word.slice(1);
+
+    let result = '';
+    for (let i = 0; i < word.length; i++) {
+        const typedChar = typed[i];
+        if (typedChar && typedChar === typedChar.toUpperCase() && typedChar !== typedChar.toLowerCase()) {
+            result += word[i].toUpperCase();
+        } else {
+            result += word[i].toLowerCase();
+        }
+    }
+    return result;
+}
+
+function applySuggestion(item, start, end, typedFragment) {
     const text = blogEditor.value;
     const before = text.substring(0, start);
     const after = text.substring(end);
-    blogEditor.value = before + item.word + " " + after;
-    const nextPos = before.length + item.word.length + 1;
+    const appliedWord = applyCasing(item.word, typedFragment);
+    blogEditor.value = before + appliedWord + " " + after;
+    const nextPos = before.length + appliedWord.length + 1;
     blogEditor.setSelectionRange(nextPos, nextPos);
     editorSuggestions.classList.add('hidden');
     blogEditor.focus();
@@ -226,7 +243,7 @@ function renderEditorSuggestions(word, start, end) {
         const wordFormatted = item.word.replace(new RegExp(`^(${word})`, 'i'), '<span class="suggestion-match">$1</span>');
         div.innerHTML = wordFormatted;
 
-        div.onclick = () => applySuggestion(item, start, end);
+        div.onclick = () => applySuggestion(item, start, end, word);
         editorSuggestions.appendChild(div);
     });
 }
@@ -260,7 +277,7 @@ blogEditor.addEventListener('keydown', (e) => {
         const { word, start, end } = getWordAtCursor(blogEditor);
         const selected = editorSuggestionItems[editorSelectedIndex];
         if (selected) {
-            applySuggestion(selected, start, end);
+            applySuggestion(selected, start, end, word);
         }
         return;
     } else if (e.key === 'Escape') {
