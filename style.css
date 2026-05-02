@@ -1,0 +1,267 @@
+body {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.page {
+    min-height: 100vh;
+}
+
+.container {
+    margin: 0 auto;
+    padding: 32px 16px 0;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.badge {
+    display: inline-block;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.title {
+    margin: 12px 0 4px;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: #475569;
+}
+
+.card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.text-muted {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: #475569;
+}
+
+.loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.loading.is-hidden {
+    display: none;
+}
+
+.spinner {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    border-top-color: #2563eb;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.editor-wrap {
+    position: relative;
+}
+
+.editor {
+    display: block;
+    width: 100%;
+    min-height: 180px;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.editor:focus {
+    outline: none;
+    border-color: #94a3b8;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.3);
+}
+
+.editor-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 250px;
+    margin-top: 4px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+}
+
+.suggestion-item:last-child {
+    border-bottom: 0;
+}
+
+.suggestion-item:hover {
+    background: #f1f5f9;
+}
+
+.suggestion-item.is-selected {
+    background: #e0e7ff;
+}
+
+.suggestion-match {
+    color: #4338ca;
+    font-weight: 700;
+}
+
+.hidden {
+    display: none;
+}
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    background: #1e293b;
+    color: #ffffff;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin: 24px 0 0;
+    max-width: none;
+    padding: 0 0 24px;
+}
+
+.stat-lines {
+    display: grid;
+    gap: 8px;
+}
+
+.stat-line {
+    margin: 0;
+    font-size: 13px;
+    color: #475569;
+}
+
+.stat-value {
+    font-weight: 700;
+    color: #2563eb;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.note {
+    margin: 12px 0 0;
+    font-size: 10px;
+    color: #64748b;
+}
+
+.feature-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 8px;
+    font-size: 12px;
+    color: #475569;
+}
+
+.text-strong {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.w-4 {
+    width: 16px;
+}
+
+.h-4 {
+    height: 16px;
+}
+
+.w-5 {
+    width: 20px;
+}
+
+.h-5 {
+    height: 20px;
+}
+
+@media (min-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 0 0 32px;
+    }
+}
