@@ -18,40 +18,50 @@
             <p class="subtitle">Self-learning prefix engine with dynamic weight updates</p>
         </div>
 
-        <!-- Blog Writer Section -->
-        <div class="card">
-            <h3 class="card-title">
-                <span class="icon-badge">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                        </path>
-                    </svg>
-                </span>
-                Blog Writer
-            </h3>
-            <p class="text-muted">Start typing to see the dictionary-backed Trie autocomplete in
-                action.</p>
-            <div id="loadingStatus" class="loading" role="status" aria-live="polite">
-                <span class="spinner" aria-hidden="true"></span>
-                <span id="loadingText">Loading dictionary...</span>
-            </div>
-            <div class="editor-wrap">
-                <textarea id="blogEditor" rows="8" class="editor"
-                    placeholder="Write your blog post here... Autocomplete will assist you!"></textarea>
-                <!-- Editor Suggestions -->
-                <div id="editorSuggestions" class="editor-suggestions hidden">
-                </div>
-            </div>
-        </div>
 
-        <!-- Learning Feedback -->
-        <div id="toast" class="toast">
-            Trie updated successfully!
-        </div>
 
         <!-- Documentation Card -->
         <div class="stats-grid">
+            <!-- Blog Writer Section -->
+            <div class="card">
+                <h3 class="card-title">
+                    <span class="icon-badge">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                            </path>
+                        </svg>
+                    </span>
+                    Blog Writer
+                </h3>
+                <p class="text-muted">Start typing to see the dictionary-backed Trie autocomplete in
+                    action.</p>
+                <div class="editor-wrap">
+                    <textarea id="blogEditor" rows="8" class="editor"
+                        placeholder="Write your blog post here... Autocomplete will assist you!"></textarea>
+                    <!-- Editor Suggestions -->
+                    <div id="editorSuggestions" class="editor-suggestions hidden">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">
+                    <span class="icon-badge">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                                d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zm8 0a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zm8 0a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z">
+                            </path>
+                        </svg>
+                    </span>
+                    Live Trie Graph
+                </h3>
+                <p class="text-muted">Updates on every keystroke. Showing a capped view for performance.</p>
+                <div class="graph-wrap">
+                    <svg id="trieGraph" class="trie-graph" role="img" aria-label="Trie graph visualization"></svg>
+                </div>
+                <p id="graphStatus" class="note"></p>
+            </div>
             <div class="card">
                 <h3 class="card-title">
                     <span class="icon-badge">
@@ -92,6 +102,15 @@
             </div>
         </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Loading Status -->
+    <div id="loadingStatus" class="loading-status">
+        <p id="loadingText"></p>
+    </div>
+
     <script src="script.js"></script>
 </body>
 

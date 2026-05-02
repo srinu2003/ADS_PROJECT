@@ -77,50 +77,149 @@ class Trie {
 
 // Initialize
 const trie = new Trie();
-const initialTerms = [
-    { t: "algorithm", w: 95 }, { t: "artificial intelligence", w: 99 }, { t: "array", w: 40 },
-    { t: "binary search", w: 85 }, { t: "data structures", w: 100 }, { t: "machine learning", w: 110 },
-    { t: "python", w: 105 }, { t: "trie", w: 120 }, { t: "recursion", w: 88 },
-    { t: "cloud computing", w: 82 }, { t: "cybersecurity", w: 75 }, { t: "javascript", w: 90 }
-];
-
-initialTerms.forEach(item => trie.insert(item.t, item.w));
 
 // DOM Elements
 const nodeCountDisplay = document.getElementById('nodeCount');
 const wordCountDisplay = document.getElementById('wordCountDisplay');
+const trieGraph = document.getElementById('trieGraph');
+const graphStatus = document.getElementById('graphStatus');
 const toast = document.getElementById('toast');
-const loadingStatus = document.getElementById('loadingStatus');
 const loadingText = document.getElementById('loadingText');
+const blogEditor = document.getElementById('blogEditor');
+const editorSuggestions = document.getElementById('editorSuggestions');
+
+const GRAPH_MAX_NODES = 220;
+const GRAPH_LEVEL_HEIGHT = 110;
+const GRAPH_WIDTH = 1000;
 
 function updateStats() {
-    nodeCountDisplay.innerText = trie.nodeCount;
-    wordCountDisplay.innerText = trie.totalWords;
+    if (nodeCountDisplay) nodeCountDisplay.innerText = trie.nodeCount;
+    if (wordCountDisplay) wordCountDisplay.innerText = trie.totalWords;
 }
 
 function showToast(msg) {
-    toast.innerText = msg;
-    toast.style.opacity = '1';
-    setTimeout(() => toast.style.opacity = '0', 2000);
+    if (toast) {
+        toast.innerText = msg;
+        toast.style.opacity = '1';
+        setTimeout(() => toast.style.opacity = '0', 2000);
+    }
+}
+
+function buildTrieGraphData(maxNodes) {
+    const nodes = [];
+    const edges = [];
+    const visited = new Set();
+    let nodeId = 0;
+
+    function traverse(node, parent, parentId, char, depth) {
+        if (nodes.length >= maxNodes) return;
+
+        const id = nodeId++;
+        const label = char || 'root';
+        nodes.push({
+            id,
+            label,
+            depth,
+            isEnd: node.isEndOfWord
+        });
+
+        if (parent !== null && parentId !== null) {
+            edges.push({ from: parentId, to: id });
+        }
+
+        for (const char in node.children) {
+            traverse(node.children[char], node, id, char, depth + 1);
+        }
+    }
+
+    traverse(trie.root, null, null, '', 0);
+    return { nodes, edges, isTruncated: nodeId >= maxNodes };
+}
+
+function renderTrieGraph() {
+    if (!trieGraph) return;
+
+    const { nodes, edges, isTruncated } = buildTrieGraphData(GRAPH_MAX_NODES);
+    const levels = new Map();
+
+    nodes.forEach(node => {
+        if (!levels.has(node.depth)) {
+            levels.set(node.depth, []);
+        }
+        levels.get(node.depth).push(node);
+    });
+
+    const maxDepth = Math.max(0, ...nodes.map(node => node.depth));
+    const height = Math.max(220, (maxDepth + 1) * GRAPH_LEVEL_HEIGHT);
+    trieGraph.setAttribute('viewBox', `0 0 ${GRAPH_WIDTH} ${height}`);
+
+    while (trieGraph.firstChild) {
+        trieGraph.removeChild(trieGraph.firstChild);
+    }
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const positions = new Map();
+
+    levels.forEach((levelNodes, depth) => {
+        const count = levelNodes.length;
+        const spacing = GRAPH_WIDTH / (count + 1);
+        levelNodes.forEach((node, index) => {
+            const x = spacing * (index + 1);
+            const y = 60 + depth * GRAPH_LEVEL_HEIGHT;
+            positions.set(node.id, { x, y, node });
+        });
+    });
+
+    edges.forEach(edge => {
+        const from = positions.get(edge.from);
+        const to = positions.get(edge.to);
+        if (!from || !to) return;
+
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', from.x);
+        line.setAttribute('y1', from.y);
+        line.setAttribute('x2', to.x);
+        line.setAttribute('y2', to.y);
+        line.setAttribute('class', 'trie-edge');
+        trieGraph.appendChild(line);
+    });
+
+    positions.forEach((pos) => {
+        const circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', pos.x);
+        circle.setAttribute('cy', pos.y);
+        circle.setAttribute('r', 16);
+        circle.setAttribute('class', pos.node.isEnd ? 'trie-node trie-node-end' : 'trie-node');
+        trieGraph.appendChild(circle);
+
+        const text = document.createElementNS(svgNS, 'text');
+        text.setAttribute('x', pos.x);
+        text.setAttribute('y', pos.y);
+        text.setAttribute('class', pos.node.label === 'root' ? 'trie-label trie-root-label' : 'trie-label');
+        text.textContent = pos.node.label;
+        trieGraph.appendChild(text);
+    });
+
+    if (graphStatus) {
+        const statusText = isTruncated
+            ? `Graph capped at ${GRAPH_MAX_NODES} nodes for performance.`
+            : `Showing ${nodes.length} nodes.`;
+        graphStatus.textContent = statusText;
+    }
 }
 
 function setLoading(isLoading, message) {
-    if (message) {
+    const loadingStatus = document.getElementById('loadingStatus');
+    if (message && loadingText) {
         loadingText.innerText = message;
     }
-
-    if (isLoading) {
-        loadingStatus.classList.remove('is-hidden');
-        return;
+    if (loadingStatus) {
+        if (isLoading) {
+            loadingStatus.classList.add('visible');
+        } else {
+            loadingStatus.classList.remove('visible');
+        }
     }
-
-    if (message) {
-        loadingStatus.classList.remove('is-hidden');
-        setTimeout(() => loadingStatus.classList.add('is-hidden'), 2000);
-        return;
-    }
-
-    loadingStatus.classList.add('is-hidden');
 }
 
 // Dictionary Data Fetch 
@@ -138,16 +237,16 @@ async function fetchDictionaryData() {
         updateStats();
         setLoading(false, `Loaded ${words.length} words.`);
         showToast(`Loaded ${words.length} dictionary words!`);
+        renderTrieGraph();
     } catch (error) {
         console.error("Failed to fetch dictionary", error);
         setLoading(false, 'Dictionary load failed. Using built-in terms.');
         showToast('Dictionary load failed. Using built-in terms.');
+        renderTrieGraph();
     }
 }
 
-// Blog Writer Logic
-const blogEditor = document.getElementById('blogEditor');
-const editorSuggestions = document.getElementById('editorSuggestions');
+// Blog Writer Logic Helper Functions
 let editorSuggestionItems = [];
 let editorSelectedIndex = -1;
 
@@ -248,6 +347,7 @@ function renderEditorSuggestions(word, start, end) {
     });
 }
 
+// Event Listeners
 blogEditor.addEventListener('input', () => {
     learnCompletedWord(blogEditor);
     const { word, start, end } = getWordAtCursor(blogEditor);
@@ -261,6 +361,8 @@ blogEditor.addEventListener('input', () => {
         editorSelectedIndex = -1;
         editorSuggestions.classList.add('hidden');
     }
+
+    renderTrieGraph();
 });
 
 blogEditor.addEventListener('keydown', (e) => {
@@ -307,6 +409,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Initialize Fetch and Stats
-fetchDictionaryData();
+// Initialize
 updateStats();
+renderTrieGraph();
