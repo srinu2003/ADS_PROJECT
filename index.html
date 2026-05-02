@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive Trie Autocomplete</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .trie-node:hover { background-color: #f8fafc; }
+        .highlight { color: #2563eb; font-weight: 700; text-decoration: underline; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        @keyframes pulse-once {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .animate-pulse-once { animation: pulse-once 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-900 pb-20">
+
+    <div class="max-w-3xl mx-auto pt-12 px-6">
+        <!-- Header Section -->
+        <div class="text-center mb-10">
+            <span class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">M.Tech Lab Project</span>
+            <h1 class="text-4xl font-extrabold text-slate-800 mt-4 mb-2">Adaptive Trie Autocomplete</h1>
+            <p class="text-slate-500">Self-learning prefix engine with dynamic weight updates</p>
+        </div>
+
+        <!-- Search Component -->
+        <div class="bg-white rounded-3xl shadow-2xl shadow-slate-200 p-2 border border-slate-200 mb-6">
+            <div class="relative flex items-center">
+                <div class="pl-5 text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input 
+                    type="text" 
+                    id="searchBar" 
+                    placeholder="Search or enter new word..."
+                    class="w-full py-5 px-4 text-lg focus:outline-none bg-transparent rounded-3xl"
+                    autocomplete="off"
+                >
+                <button 
+                    id="addBtn"
+                    class="mr-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all active:scale-95 hidden whitespace-nowrap"
+                >
+                    Add Word
+                </button>
+            </div>
+
+            <!-- Suggestions List -->
+            <div id="resultsContainer" class="hidden border-t border-slate-100 overflow-hidden">
+                <ul id="resultsList" class="max-h-80 overflow-y-auto custom-scroll">
+                    <!-- Results populated by JS -->
+                </ul>
+                <div class="bg-slate-50 px-6 py-3 text-[10px] text-slate-400 flex justify-between uppercase tracking-widest font-bold">
+                    <span id="perfStats">Search took 0.00ms</span>
+                    <span id="matchCount">0 Matches Found</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Learning Feedback -->
+        <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-slate-800 text-white rounded-full text-sm font-medium shadow-2xl opacity-0 transition-opacity pointer-events-none z-50">
+            Trie updated successfully!
+        </div>
+
+        <!-- Documentation Card -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    <span class="p-1 bg-green-100 text-green-600 rounded">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg>
+                    </span>
+                    Live Trie Stats
+                </h3>
+                <div class="space-y-2">
+                    <p class="text-sm text-slate-600">Total Nodes: <span id="nodeCount" class="font-mono font-bold text-blue-600">0</span></p>
+                    <p class="text-sm text-slate-600">Total Words: <span id="wordCountDisplay" class="font-mono font-bold text-blue-600">0</span></p>
+                </div>
+                <p class="text-[10px] mt-4 text-slate-400 leading-relaxed italic">Type a new word and click 'Add Word' to see the node count increase dynamically.</p>
+            </div>
+            
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    <span class="p-1 bg-purple-100 text-purple-600 rounded">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path></svg>
+                    </span>
+                    Adaptive Features
+                </h3>
+                <ul class="text-xs text-slate-500 space-y-2">
+                    <li>• <span class="text-slate-800 font-semibold">User Input:</span> Adds new strings to the Trie.</li>
+                    <li>• <span class="text-slate-800 font-semibold">Self-Weighting:</span> Repeatedly adding/searching a word increases its frequency.</li>
+                    <li>• <span class="text-slate-800 font-semibold">Memory:</span> In-memory persistence for current session.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * TrieNode Class
+         */
+        class TrieNode {
+            constructor() {
+                this.children = {};
+                this.isEndOfWord = false;
+                this.frequency = 0;
+            }
+        }
+
+        /**
+         * Trie Data Structure with Dynamic Updates
+         */
+        class Trie {
+            constructor() {
+                this.root = new TrieNode();
+                this.nodeCount = 1;
+                this.totalWords = 0;
+            }
+
+            insert(word, freq = 1) {
+                if (!word || word.trim() === "") return false;
+                
+                let current = this.root;
+                let isNewWord = false;
+                
+                for (const char of word.toLowerCase()) {
+                    if (!current.children[char]) {
+                        current.children[char] = new TrieNode();
+                        this.nodeCount++;
+                    }
+                    current = current.children[char];
+                }
+
+                if (!current.isEndOfWord) {
+                    current.isEndOfWord = true;
+                    this.totalWords++;
+                    isNewWord = true;
+                }
+                
+                current.frequency = (current.frequency || 0) + freq;
+                return isNewWord;
+            }
+
+            findPrefixNode(prefix) {
+                let current = this.root;
+                for (const char of prefix.toLowerCase()) {
+                    if (!current.children[char]) return null;
+                    current = current.children[char];
+                }
+                return current;
+            }
+
+            collectAllWords(node, prefix, results) {
+                if (node.isEndOfWord) {
+                    results.push({ word: prefix, weight: node.frequency });
+                }
+
+                for (const char in node.children) {
+                    this.collectAllWords(node.children[char], prefix + char, results);
+                }
+            }
+
+            autocomplete(prefix) {
+                if (!prefix) return [];
+                
+                const startNode = this.findPrefixNode(prefix);
+                if (!startNode) return [];
+
+                const matches = [];
+                this.collectAllWords(startNode, prefix.toLowerCase(), matches);
+                
+                return matches.sort((a, b) => b.weight - a.weight);
+            }
+
+            exactSearch(word) {
+                const node = this.findPrefixNode(word);
+                return node && node.isEndOfWord;
+            }
+        }
+
+        // Initialize
+        const trie = new Trie();
+        const initialTerms = [
+            {t: "algorithm", w: 95}, {t: "artificial intelligence", w: 99}, {t: "array", w: 40},
+            {t: "binary search", w: 85}, {t: "data structures", w: 100}, {t: "machine learning", w: 110},
+            {t: "python", w: 105}, {t: "trie", w: 120}, {t: "recursion", w: 88},
+            {t: "cloud computing", w: 82}, {t: "cybersecurity", w: 75}, {t: "javascript", w: 90}
+        ];
+
+        initialTerms.forEach(item => trie.insert(item.t, item.w));
+
+        // DOM Elements
+        const input = document.getElementById('searchBar');
+        const addBtn = document.getElementById('addBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsList = document.getElementById('resultsList');
+        const perfStats = document.getElementById('perfStats');
+        const matchCount = document.getElementById('matchCount');
+        const nodeCountDisplay = document.getElementById('nodeCount');
+        const wordCountDisplay = document.getElementById('wordCountDisplay');
+        const toast = document.getElementById('toast');
+
+        function updateStats() {
+            nodeCountDisplay.innerText = trie.nodeCount;
+            wordCountDisplay.innerText = trie.totalWords;
+        }
+
+        function showToast(msg) {
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        }
+
+        function handleSearch() {
+            const query = input.value.trim();
+            
+            if (!query) {
+                resultsContainer.classList.add('hidden');
+                addBtn.classList.add('hidden');
+                return;
+            }
+
+            // Start Performance Measure
+            const start = performance.now();
+            const suggestions = trie.autocomplete(query);
+            const end = performance.now();
+
+            perfStats.innerText = `Search took ${(end - start).toFixed(4)}ms`;
+            matchCount.innerText = `${suggestions.length} Matches Found`;
+
+            // If the query isn't an exact match in the trie, show the "Add" button
+            if (!trie.exactSearch(query)) {
+                addBtn.classList.remove('hidden');
+            } else {
+                addBtn.classList.add('hidden');
+            }
+
+            displayResults(suggestions, query);
+        }
+
+        function displayResults(list, query) {
+            resultsList.innerHTML = '';
+            
+            if (list.length === 0) {
+                resultsList.innerHTML = `
+                    <li class="px-6 py-8 text-center text-slate-400">
+                        No matches found. Click <strong>Add Word</strong> to include it.
+                    </li>`;
+                resultsContainer.classList.remove('hidden');
+                return;
+            }
+
+            list.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "trie-node px-6 py-4 flex justify-between items-center cursor-pointer transition-colors border-b border-slate-50 last:border-0";
+                
+                const regex = new RegExp(`^(${query})`, 'i');
+                const wordFormatted = item.word.replace(regex, '<span class="highlight">$1</span>');
+                
+                li.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="text-slate-700 font-medium">${wordFormatted}</span>
+                        <span class="text-[10px] text-slate-400 uppercase">Frequency Score: ${item.weight}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-500" style="width: ${Math.min(item.weight, 100)}%"></div>
+                        </div>
+                        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </div>
+                `;
+
+                li.onclick = () => {
+                    input.value = item.word;
+                    // Increasing frequency on click/selection (Learning Behavior)
+                    trie.insert(item.word, 5); 
+                    handleSearch();
+                    showToast(`Updated weight for "${item.word}"`);
+                };
+                resultsList.appendChild(li);
+            });
+
+            resultsContainer.classList.remove('hidden');
+        }
+
+        // Add New Word Logic
+        addBtn.onclick = () => {
+            const word = input.value.trim();
+            if (word) {
+                const isNew = trie.insert(word, 10);
+                updateStats();
+                handleSearch();
+                showToast(isNew ? `Learned: "${word}"` : `Frequency up for "${word}"`);
+                
+                // Visual feedback on the node count
+                nodeCountDisplay.classList.add('animate-pulse-once');
+                setTimeout(() => nodeCountDisplay.classList.remove('animate-pulse-once'), 300);
+            }
+        };
+
+        input.addEventListener('input', handleSearch);
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!input.contains(e.target) && !resultsContainer.contains(e.target) && !addBtn.contains(e.target)) {
+                resultsContainer.classList.add('hidden');
+            }
+        });
+
+        // Initial Stat Load
+        updateStats();
+    </script>
+</body>
+</html>
