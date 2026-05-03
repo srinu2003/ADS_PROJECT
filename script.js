@@ -348,6 +348,29 @@ function renderEditorSuggestions(word, start, end) {
 }
 
 // Event Listeners
+blogEditor.addEventListener('paste', (e) => {
+    const pasteText = (e.clipboardData || window.clipboardData).getData('text');
+    if (!pasteText) return;
+
+    const words = pasteText.match(/[A-Za-z0-9_]+/g);
+    if (!words) return;
+
+    let newWordCount = 0;
+    for (const w of words) {
+        const word = w.toLowerCase();
+        if (word.length >= 2) {
+            const isNew = trie.insert(word, 2);
+            if (isNew) newWordCount++;
+        }
+    }
+
+    if (newWordCount > 0) {
+        updateStats();
+        renderTrieGraph();
+        showToast(`Learned ${newWordCount} new words from pasted text!`);
+    }
+});
+
 blogEditor.addEventListener('input', () => {
     learnCompletedWord(blogEditor);
     const { word, start, end } = getWordAtCursor(blogEditor);

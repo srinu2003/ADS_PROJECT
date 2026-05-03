@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autocomplete — Trie Data Structure</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0d0f14;
+    --bg1:      #13161e;
+    --bg2:      #1a1e2a;
+    --bg3:      #222737;
+    --border:   #2a2f42;
+    --border2:  #343a52;
+    --accent:   #4f8cff;
+    --accent2:  #7eb3ff;
+    --green:    #3ddc84;
+    --green2:   #5aeea0;
+    --amber:    #ffc96b;
+    --red:      #ff6b6b;
+    --text:     #e8eaf2;
+    --text2:    #9aa3c2;
+    --text3:    #5c6480;
+    --mono:     'JetBrains Mono', monospace;
+    --sans:     'Syne', sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); overflow-x: hidden; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ── LAYOUT ── */
+  .app { display: grid; grid-template-rows: auto 1fr; min-height: 100vh; }
+
+  /* ── HEADER ── */
+  header {
+    padding: 18px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 20px;
+    background: var(--bg1);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent) 0%, #7c5cfc 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #fff; font-family: var(--sans);
+    flex-shrink: 0;
+  }
+  header h1 { font-family: var(--sans); font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  header h1 span { color: var(--text3); font-weight: 400; font-size: 13px; display: block; margin-top: 1px; font-family: var(--mono); letter-spacing: 0; }
+  .header-stats { margin-left: auto; display: flex; gap: 24px; }
+  .hstat { text-align: right; }
+  .hstat-val { font-size: 20px; font-weight: 700; color: var(--accent); font-family: var(--sans); line-height: 1; }
+  .hstat-label { font-size: 10px; color: var(--text3); margin-top: 2px; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* ── MAIN GRID ── */
+  main { display: grid; grid-template-columns: 420px 1fr; gap: 0; height: 100%; }
+
+  /* ── LEFT PANEL ── */
+  .left-panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; height: calc(100vh - 71px); overflow: hidden; }
+
+  /* ── AUTOCOMPLETE BOX ── */
+  .search-section {
+    padding: 24px 24px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg1);
+  }
+  .search-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); margin-bottom: 10px; }
+  .search-wrap { position: relative; }
+  .search-input {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 12px 44px 12px 16px;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    caret-color: var(--accent);
+  }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,140,255,.12); }
+  .search-icon { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 14px; pointer-events: none; }
+  .timing { font-size: 10px; color: var(--text3); margin-top: 8px; height: 14px; transition: color .2s; }
+  .timing.hit { color: var(--green); }
+
+  /* ── SUGGESTIONS ── */
+  .suggestions-wrap { padding: 16px 24px; border-bottom: 1px solid var(--border); min-height: 68px; }
+  .sugg-empty { font-size: 12px; color: var(--text3); padding: 8px 0; }
+  .sugg-list { display: flex; flex-direction: column; gap: 4px; }
+  .sugg-item {
+    display: flex; align-items: center; gap: 0;
+    padding: 8px 12px; border-radius: 8px;
+    background: var(--bg2); border: 1px solid var(--border);
+    cursor: pointer; transition: background .15s, border-color .15s;
+    font-size: 13px; position: relative; overflow: hidden;
+  }
+  .sugg-item:hover { background: var(--bg3); border-color: var(--accent); }
+  .sugg-item.top { border-color: var(--accent); }
+  .sugg-rank { font-size: 9px; color: var(--text3); min-width: 18px; margin-right: 6px; }
+  .sugg-match { color: var(--accent); font-weight: 500; }
+  .sugg-rest { color: var(--text2); }
+  .sugg-freq {
+    margin-left: auto; font-size: 10px; padding: 2px 6px;
+    background: var(--bg3); border-radius: 4px; color: var(--text3);
+    border: 1px solid var(--border);
+  }
+  .sugg-item.top .sugg-freq { background: rgba(79,140,255,.12); color: var(--accent2); border-color: rgba(79,140,255,.3); }
+  .sugg-bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: rgba(79,140,255,.05); border-right: 2px solid transparent;
+    transition: width .3s ease;
+  }
+  .sugg-item.top .sugg-bar { border-right-color: var(--accent); }
+
+  /* ── TABS ── */
+  .ops-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .tab-bar { display: flex; border-bottom: 1px solid var(--border); background: var(--bg1); }
+  .tab-btn {
+    padding: 10px 18px; font-size: 11px; font-family: var(--mono);
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text3); background: transparent; border: none;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: color .15s, border-color .15s;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── FORM ELEMENTS ── */
+  .field { margin-bottom: 14px; }
+  .field label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); display: block; margin-bottom: 6px; }
+  .field input {
+    width: 100%; background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 10px 14px; font-family: var(--mono);
+    font-size: 13px; color: var(--text); outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,140,255,.1); }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; margin-bottom: 0; }
+  .field-row .field.narrow { flex: 0 0 90px; }
+
+  .btn {
+    width: 100%; padding: 10px 20px; border-radius: 8px;
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; transition: opacity .15s, transform .1s;
+    margin-top: 14px;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: .9; }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+  .btn-danger:hover { background: rgba(255,107,107,.08); }
+
+  /* ── LOG ── */
+  .log-box {
+    margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+    background: var(--bg); border: 1px solid var(--border);
+    font-size: 11px; color: var(--text3); min-height: 36px;
+    transition: color .2s;
+  }
+  .log-box.ok { color: var(--green); }
+  .log-box.err { color: var(--red); }
+  .log-box.info { color: var(--amber); }
+
+  /* ── PRESET CHIPS ── */
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .preset-chip {
+    padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border2);
+    background: var(--bg2); cursor: pointer; font-family: var(--mono);
+    font-size: 11px; color: var(--text2); transition: all .15s; text-align: left;
+  }
+  .preset-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,140,255,.05); }
+  .preset-chip strong { display: block; font-size: 13px; margin-bottom: 2px; color: var(--text); }
+  .clear-btn {
+    width: 100%; margin-top: 14px; padding: 8px; border-radius: 8px;
+    background: transparent; border: 1px solid var(--border2);
+    color: var(--text3); font-family: var(--mono); font-size: 11px;
+    cursor: pointer; transition: all .15s;
+  }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); background: rgba(255,107,107,.04); }
+
+  /* ── DICTIONARY ── */
+  .dict-section { padding: 16px 24px 0; border-bottom: 1px solid var(--border); }
+  .dict-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .dict-title { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); }
+  .dict-count { font-size: 11px; color: var(--accent); }
+  .dict-chips { display: flex; flex-wrap: wrap; gap: 5px; max-height: 96px; overflow-y: auto; padding-bottom: 16px; }
+  .dict-chip {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 8px 3px 10px; border-radius: 20px;
+    background: var(--bg2); border: 1px solid var(--border);
+    font-size: 11px; color: var(--text2);
+    transition: border-color .15s;
+  }
+  .dict-chip:hover { border-color: var(--border2); }
+  .dict-chip .chip-freq { font-size: 9px; color: var(--text3); }
+  .dict-chip .chip-del { font-size: 10px; color: var(--text3); cursor: pointer; padding: 0 1px; line-height: 1; transition: color .15s; }
+  .dict-chip .chip-del:hover { color: var(--red); }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel { display: flex; flex-direction: column; height: calc(100vh - 71px); overflow: hidden; }
+  .vis-header { padding: 16px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; background: var(--bg1); flex-shrink: 0; }
+  .vis-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); }
+  .vis-legend { display: flex; gap: 16px; margin-left: auto; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text3); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .leg-dot.root { background: var(--accent); }
+  .leg-dot.mid { background: var(--bg3); border: 1px solid var(--border2); }
+  .leg-dot.end { background: var(--green); }
+  .leg-dot.highlight { background: var(--amber); }
+
+  .vis-body { flex: 1; overflow: auto; padding: 24px 28px; }
+  #trie-canvas { width: 100%; min-height: 400px; }
+
+  /* ── INFO CARDS ── */
+  .info-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; border-top: 1px solid var(--border); background: var(--border); flex-shrink: 0; }
+  .info-card { background: var(--bg1); padding: 14px 20px; }
+  .info-val { font-size: 24px; font-weight: 700; color: var(--text); font-family: var(--sans); line-height: 1; }
+  .info-val.accent { color: var(--accent); }
+  .info-val.green { color: var(--green); }
+  .info-val.amber { color: var(--amber); }
+  .info-label { font-size: 10px; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .sugg-item { animation: fadeIn .15s ease both; }
+  .sugg-item:nth-child(1) { animation-delay: 0ms; }
+  .sugg-item:nth-child(2) { animation-delay: 30ms; }
+  .sugg-item:nth-child(3) { animation-delay: 60ms; }
+  .sugg-item:nth-child(4) { animation-delay: 90ms; }
+  .sugg-item:nth-child(5) { animation-delay: 120ms; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+    .left-panel { height: auto; }
+    .right-panel { height: 480px; }
+    .info-strip { grid-template-columns: repeat(2,1fr); }
+    header { padding: 14px 20px; }
+    .header-stats { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo-mark">T</div>
+    <h1>Trie Autocomplete <span>M.Tech (CSE) R25 · Advanced Data Structures Lab</span></h1>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-val" id="h-words">0</div><div class="hstat-label">Words</div></div>
+      <div class="hstat"><div class="hstat-val" id="h-nodes">1</div><div class="hstat-label">Nodes</div></div>
+      <div class="hstat"><div class="hstat-val" id="h-depth">0</div><div class="hstat-label">Max Depth</div></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── LEFT PANEL ── -->
+    <div class="left-panel">
+
+      <!-- Search -->
+      <div class="search-section">
+        <div class="search-label">Autocomplete Search</div>
+        <div class="search-wrap">
+          <input class="search-input" id="search-input" type="text" placeholder="Type a prefix…" autocomplete="off" spellcheck="false">
+          <span class="search-icon">⌕</span>
+        </div>
+        <div class="timing" id="timing">Ready</div>
+      </div>
+
+      <!-- Suggestions -->
+      <div class="suggestions-wrap" id="sugg-wrap">
+        <div class="sugg-empty">Type a prefix above to see suggestions…</div>
+      </div>
+
+      <!-- Dictionary -->
+      <div class="dict-section">
+        <div class="dict-header">
+          <div class="dict-title">Dictionary</div>
+          <div class="dict-count" id="dict-count">0 words</div>
+        </div>
+        <div class="dict-chips" id="dict-chips">
+          <span style="font-size:11px;color:var(--text3)">No words yet.</span>
+        </div>
+      </div>
+
+      <!-- Operations -->
+      <div class="ops-section">
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="switchTab('insert',this)">Insert</button>
+          <button class="tab-btn" onclick="switchTab('delete',this)">Delete</button>
+          <button class="tab-btn" onclick="switchTab('preset',this)">Presets</button>
+        </div>
+        <div class="tab-content">
+
+          <!-- Insert tab -->
+          <div class="tab-pane active" id="tab-insert">
+            <div class="field-row">
+              <div class="field">
+                <label>Word</label>
+                <input type="text" id="ins-word" placeholder="e.g. algorithm" spellcheck="false" onkeydown="if(event.key==='Enter')doInsert()">
+              </div>
+              <div class="field narrow">
+                <label>Freq</label>
+                <input type="number" id="ins-freq" placeholder="1–100" min="1" max="999">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="doInsert()">Insert word →</button>
+            <div class="log-box" id="ins-log">Enter a word and press Insert.</div>
+          </div>
+
+          <!-- Delete tab -->
+          <div class="tab-pane" id="tab-delete">
+            <div class="field">
+              <label>Word to delete</label>
+              <input type="text" id="del-word" placeholder="e.g. stack" spellcheck="false" onkeydown="if(event.key==='Enter')doDelete()">
+            </div>
+            <button class="btn btn-danger" onclick="doDelete()">Delete word ✕</button>
+            <div class="log-box" id="del-log">Enter a word to remove from the Trie.</div>
+          </div>
+
+          <!-- Preset tab -->
+          <div class="tab-pane" id="tab-preset">
+            <div class="preset-grid">
+              <div class="preset-chip" onclick="loadPreset('tech')"><strong>Tech Terms</strong>27 words</div>
+              <div class="preset-chip" onclick="loadPreset('geo')"><strong>World Cities</strong>25 words</div>
+              <div class="preset-chip" onclick="loadPreset('sci')"><strong>Science</strong>28 words</div>
+              <div class="preset-chip" onclick="loadPreset('ds')"><strong>Data Structures</strong>22 words</div>
+            </div>
+            <div class="log-box" id="preset-log">Choose a preset to bulk-load.</div>
+            <button class="clear-btn" onclick="clearAll()">⊘ Clear entire Trie</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT PANEL ── -->
+    <div class="right-panel">
+      <div class="vis-header">
+        <span class="vis-title">Trie Visualizer — top 4 levels</span>
+        <div class="vis-legend">
+          <div class="leg-item"><div class="leg-dot root"></div>root</div>
+          <div class="leg-item"><div class="leg-dot mid"></div>char node</div>
+          <div class="leg-item"><div class="leg-dot end"></div>word end</div>
+          <div class="leg-item"><div class="leg-dot highlight"></div>active prefix</div>
+        </div>
+      </div>
+      <div class="vis-body">
+        <svg id="trie-canvas"></svg>
+      </div>
+      <div class="info-strip">
+        <div class="info-card"><div class="info-val accent" id="i-words">0</div><div class="info-label">Words</div></div>
+        <div class="info-card"><div class="info-val" id="i-nodes">1</div><div class="info-label">Nodes</div></div>
+        <div class="info-card"><div class="info-val green" id="i-prefixes">0</div><div class="info-label">Prefixes</div></div>
+        <div class="info-card"><div class="info-val amber" id="i-time">—</div><div class="info-label">Last search (ms)</div></div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  TRIE DATA STRUCTURE
+// ═══════════════════════════════════════════
+class TrieNode {
+  constructor() { this.children = {}; this.isEnd = false; this.freq = 1; }
+}
+
+class Trie {
+  constructor() { this.root = new TrieNode(); this.wordCount = 0; this.nodeCount = 1; }
+
+  insert(word, freq = 1) {
+    let node = this.root, added = 0;
+    for (const ch of word) {
+      if (!node.children[ch]) { node.children[ch] = new TrieNode(); added++; }
+      node = node.children[ch];
+    }
+    if (!node.isEnd) { node.isEnd = true; this.wordCount++; }
+    node.freq = freq;
+    this.nodeCount += added;
+    return added;
+  }
+
+  search(prefix, topK = 8) {
+    let node = this.root;
+    for (const ch of prefix) { if (!node.children[ch]) return []; node = node.children[ch]; }
+    const results = [];
+    const dfs = (n, w) => {
+      if (results.length >= topK * 3) return;
+      if (n.isEnd) results.push({ word: w, freq: n.freq });
+      for (const ch of Object.keys(n.children).sort()) dfs(n.children[ch], w + ch);
+    };
+    dfs(node, prefix);
+    return results.sort((a, b) => b.freq - a.freq || a.word.localeCompare(b.word)).slice(0, topK);
+  }
+
+  contains(word) {
+    let node = this.root;
+    for (const ch of word) { if (!node.children[ch]) return false; node = node.children[ch]; }
+    return node.isEnd;
+  }
+
+  delete(word) {
+    const path = [];
+    let node = this.root;
+    for (const ch of word) {
+      if (!node.children[ch]) return false;
+      path.push([node, ch]);
+      node = node.children[ch];
+    }
+    if (!node.isEnd) return false;
+    node.isEnd = false; this.wordCount--;
+    for (let i = path.length - 1; i >= 0; i--) {
+      const [parent, ch] = path[i];
+      const child = parent.children[ch];
+      if (!Object.keys(child.children).length && !child.isEnd) { delete parent.children[ch]; this.nodeCount--; }
+      else break;
+    }
+    return true;
+  }
+
+  allWords() {
+    const res = [];
+    const dfs = (n, w) => { if (n.isEnd) res.push({ word: w, freq: n.freq }); for (const ch in n.children) dfs(n.children[ch], w + ch); };
+    dfs(this.root, '');
+    return res.sort((a, b) => b.freq - a.freq || a.word.localeCompare(b.word));
+  }
+
+  maxDepth() {
+    let d = 0;
+    const dfs = (n, depth) => { d = Math.max(d, depth); for (const ch in n.children) dfs(n.children[ch], depth + 1); };
+    dfs(this.root, 0); return d;
+  }
+
+  countPrefixes() {
+    let c = 0;
+    const dfs = n => { if (Object.keys(n.children).length) c++; for (const ch in n.children) dfs(n.children[ch]); };
+    dfs(this.root); return c;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  PRESETS
+// ═══════════════════════════════════════════
+const PRESETS = {
+  tech: [['algorithm',95],['array',80],['binary',70],['breadth',60],['cache',75],['compiler',65],['data',90],['depth',58],['dynamic',72],['graph',68],['hash',77],['heap',62],['integer',85],['iterator',55],['linked',63],['list',88],['network',74],['node',91],['pointer',59],['queue',66],['recursion',71],['search',92],['sort',89],['stack',84],['string',97],['tree',87],['variable',73]],
+  geo:  [['amsterdam',40],['athens',38],['bangalore',55],['beijing',72],['berlin',65],['cairo',48],['chicago',60],['dubai',58],['delhi',70],['hyderabad',62],['istanbul',45],['jakarta',50],['london',90],['madrid',55],['moscow',62],['mumbai',68],['nairobi',35],['paris',88],['rome',70],['seoul',58],['shanghai',75],['singapore',80],['sydney',72],['tokyo',85],['toronto',60]],
+  sci:  [['atom',75],['biology',65],['chromosome',45],['circuit',60],['dna',70],['electron',68],['entropy',55],['enzyme',52],['force',78],['frequency',60],['gene',72],['gravity',80],['hydrogen',65],['ion',58],['kinetics',45],['laser',62],['mass',82],['molecule',70],['neutron',58],['nucleus',68],['orbit',60],['photon',55],['proton',65],['quantum',72],['radiation',58],['velocity',70],['wavelength',55],['thermodynamics',40]],
+  ds:   [['array',90],['binarytree',72],['btree',65],['deque',55],['graph',80],['hashtable',85],['heap',75],['linkedlist',88],['matrix',60],['queue',78],['segment',55],['set',70],['skiplist',45],['stack',82],['trie',95],['tree',85],['vector',68],['avl',60],['redblack',58],['disjoint',50],['fibonacci',48],['bloom',42]]
+};
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const trie = new Trie();
+let activePrefix = '';
+
+// ═══════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════
+function updateStats() {
+  const w = trie.wordCount, n = trie.nodeCount, d = trie.maxDepth(), p = trie.countPrefixes();
+  document.getElementById('h-words').textContent = w;
+  document.getElementById('h-nodes').textContent = n;
+  document.getElementById('h-depth').textContent = d;
+  document.getElementById('i-words').textContent = w;
+  document.getElementById('i-nodes').textContent = n;
+  document.getElementById('i-prefixes').textContent = p;
+}
+
+function updateDict() {
+  const words = trie.allWords();
+  document.getElementById('dict-count').textContent = words.length + ' words';
+  const el = document.getElementById('dict-chips');
+  if (!words.length) { el.innerHTML = '<span style="font-size:11px;color:var(--text3)">No words yet.</span>'; return; }
+  el.innerHTML = words.map(({ word, freq }) =>
+    `<div class="dict-chip">${word}<span class="chip-freq">${freq}</span><span class="chip-del" onclick="quickDel('${word}')" title="Remove">✕</span></div>`
+  ).join('');
+}
+
+function setLog(id, msg, type = '') {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'log-box' + (type ? ' ' + type : '');
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════
+//  AUTOCOMPLETE
+// ═══════════════════════════════════════════
+document.getElementById('search-input').addEventListener('input', function() {
+  activePrefix = this.value.trim().toLowerCase();
+  runSearch();
+});
+
+function runSearch() {
+  const prefix = activePrefix;
+  const timing = document.getElementById('timing');
+  const wrap = document.getElementById('sugg-wrap');
+
+  if (!prefix) {
+    wrap.innerHTML = '<div class="sugg-empty">Type a prefix above to see suggestions…</div>';
+    timing.textContent = 'Ready'; timing.className = 'timing';
+    document.getElementById('i-time').textContent = '—';
+    renderTrie('');
+    return;
+  }
+
+  const t0 = performance.now();
+  const results = trie.search(prefix, 8);
+  const ms = (performance.now() - t0).toFixed(3);
+
+  document.getElementById('i-time').textContent = ms;
+  timing.className = 'timing' + (results.length ? ' hit' : '');
+  timing.textContent = results.length
+    ? `${results.length} match${results.length > 1 ? 'es' : ''} · ${ms}ms`
+    : `No matches · ${ms}ms`;
+
+  if (!results.length) {
+    wrap.innerHTML = '<div class="sugg-empty">No words match this prefix.</div>';
+  } else {
+    const maxFreq = results[0].freq;
+    wrap.innerHTML = '<div class="sugg-list">' + results.map((r, i) => {
+      const pct = Math.round((r.freq / maxFreq) * 100);
+      return `<div class="sugg-item${i === 0 ? ' top' : ''}" onclick="selectSugg('${r.word}')">
+        <div class="sugg-bar" style="width:${pct}%"></div>
+        <span class="sugg-rank">#${i+1}</span>
+        <span><span class="sugg-match">${prefix}</span><span class="sugg-rest">${r.word.slice(prefix.length)}</span></span>
+        <span class="sugg-freq">${r.freq}</span>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  renderTrie(prefix);
+}
+
+function selectSugg(word) {
+  document.getElementById('search-input').value = word;
+  activePrefix = word;
+  runSearch();
+}
+
+// ═══════════════════════════════════════════
+//  INSERT / DELETE / CLEAR
+// ═══════════════════════════════════════════
+function doInsert() {
+  const w = document.getElementById('ins-word').value.trim().toLowerCase();
+  const f = parseInt(document.getElementById('ins-freq').value) || Math.floor(Math.random() * 40 + 40);
+  if (!w) { setLog('ins-log', 'Please enter a word.', 'err'); return; }
+  if (!/^[a-z]+$/.test(w)) { setLog('ins-log', 'Only letters a–z allowed.', 'err'); return; }
+  const added = trie.insert(w, f);
+  setLog('ins-log', `Inserted "${w}" (freq:${f}) — +${added} new node${added !== 1 ? 's' : ''}`, 'ok');
+  document.getElementById('ins-word').value = '';
+  document.getElementById('ins-freq').value = '';
+  afterMutation();
+}
+
+function doDelete() {
+  const w = document.getElementById('del-word').value.trim().toLowerCase();
+  if (!w) { setLog('del-log', 'Enter a word to delete.', 'err'); return; }
+  const ok = trie.delete(w);
+  setLog('del-log', ok ? `Deleted "${w}" from Trie.` : `"${w}" not found in Trie.`, ok ? 'ok' : 'err');
+  document.getElementById('del-word').value = '';
+  afterMutation();
+}
+
+function quickDel(word) { trie.delete(word); afterMutation(); }
+
+function loadPreset(key) {
+  PRESETS[key].forEach(([w, f]) => trie.insert(w, f));
+  setLog('preset-log', `Loaded ${PRESETS[key].length} words from "${key}" preset.`, 'ok');
+  afterMutation();
+}
+
+function clearAll() {
+  trie.root = new TrieNode(); trie.wordCount = 0; trie.nodeCount = 1;
+  setLog('preset-log', 'Trie cleared.', 'info');
+  afterMutation();
+  document.getElementById('sugg-wrap').innerHTML = '<div class="sugg-empty">Type a prefix above to see suggestions…</div>';
+}
+
+function afterMutation() {
+  updateStats(); updateDict(); runSearch();
+}
+
+// ═══════════════════════════════════════════
+//  TRIE VISUALIZER
+// ═══════════════════════════════════════════
+function renderTrie(highlightPrefix) {
+  const svg = document.getElementById('trie-canvas');
+  const W = svg.parentElement.clientWidth - 56 || 600;
+  const ROOT_R = 18, NODE_R = 14, SMALL_R = 10, TINY_R = 7;
+  const LEVEL_H = 72;
+  const MAX_L1 = 26, MAX_L2 = 6, MAX_L3 = 4, MAX_L4 = 3;
+
+  const rootChildren = Object.keys(trie.root.children).sort();
+  if (!rootChildren.length) {
+    svg.setAttribute('viewBox', `0 0 ${W} 80`);
+    svg.innerHTML = `<text x="${W/2}" y="44" text-anchor="middle" font-size="13" fill="#5c6480" font-family="JetBrains Mono, monospace">Insert words to visualise the Trie…</text>`;
+    return;
+  }
+
+  // Build layout tree
+  const nodes = [], edges = [];
+  const hPrefix = (highlightPrefix || '').toLowerCase();
+  const L1 = rootChildren.slice(0, MAX_L1);
+  const colW = Math.max(34, Math.floor((W - 40) / L1.length));
+  const cx1 = (i) => 20 + colW / 2 + i * colW;
+  const rootX = W / 2, rootY = 40;
+
+  L1.forEach((ch, i) => {
+    const x = Math.min(cx1(i), W - 20);
+    const y = rootY + LEVEL_H;
+    const active = hPrefix.length >= 1 && hPrefix[0] === ch;
+    nodes.push({ x, y, label: ch, isEnd: trie.root.children[ch].isEnd, r: NODE_R, active, id: ch });
+    edges.push({ x1: rootX, y1: rootY, x2: x, y2: y, active });
+
+    const l2node = trie.root.children[ch];
+    const l2keys = Object.keys(l2node.children).sort().slice(0, MAX_L2);
+    const subW = Math.min(colW * 0.95, (MAX_L2 * 28));
+    l2keys.forEach((ch2, j) => {
+      const x2 = x + (j - (l2keys.length - 1) / 2) * Math.min(30, subW / Math.max(l2keys.length, 1));
+      const y2 = y + LEVEL_H;
+      const active2 = active && hPrefix.length >= 2 && hPrefix[1] === ch2;
+      nodes.push({ x: x2, y: y2, label: ch2, isEnd: l2node.children[ch2].isEnd, r: SMALL_R, active: active2, id: ch + ch2 });
+      edges.push({ x1: x, y1: y, x2: x2, y2: y2, active: active && hPrefix.length >= 2 });
+
+      const l3node = l2node.children[ch2];
+      const l3keys = Object.keys(l3node.children).sort().slice(0, MAX_L3);
+      l3keys.forEach((ch3, k) => {
+        const x3 = x2 + (k - (l3keys.length - 1) / 2) * Math.min(22, 60 / Math.max(l3keys.length, 1));
+        const y3 = y2 + LEVEL_H;
+        const active3 = active2 && hPrefix.length >= 3 && hPrefix[2] === ch3;
+        nodes.push({ x: x3, y: y3, label: ch3, isEnd: l3node.children[ch3].isEnd, r: TINY_R, active: active3, id: ch+ch2+ch3 });
+        edges.push({ x1: x2, y1: y2, x2: x3, y2: y3, active: active2 && hPrefix.length >= 3 });
+
+        const l4node = l3node.children[ch3];
+        const l4keys = Object.keys(l4node.children).sort().slice(0, MAX_L4);
+        l4keys.forEach((ch4, m) => {
+          const x4 = x3 + (m - (l4keys.length - 1) / 2) * 14;
+          const y4 = y3 + LEVEL_H;
+          const active4 = active3 && hPrefix.length >= 4 && hPrefix[3] === ch4;
+          nodes.push({ x: x4, y: y4, label: ch4, isEnd: l4node.children[ch4].isEnd, r: 5, active: active4, id: ch+ch2+ch3+ch4 });
+          edges.push({ x1: x3, y1: y3, x2: x4, y2: y4, active: active3 && hPrefix.length >= 4 });
+        });
+      });
+    });
+  });
+
+  const maxY = nodes.reduce((m, n) => Math.max(m, n.y), rootY) + 40;
+  svg.setAttribute('viewBox', `0 0 ${W} ${maxY}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', maxY);
+
+  let html = '';
+  // Edges
+  edges.forEach(e => {
+    const clr = e.active ? '#4f8cff' : '#2a2f42';
+    const sw = e.active ? 1.5 : 0.8;
+    html += `<line x1="${e.x1.toFixed(1)}" y1="${e.y1}" x2="${e.x2.toFixed(1)}" y2="${e.y2}" stroke="${clr}" stroke-width="${sw}" opacity="${e.active ? 1 : 0.6}"/>`;
+  });
+
+  // Root node
+  html += `<circle cx="${rootX}" cy="${rootY}" r="${ROOT_R}" fill="#1a1e2a" stroke="#4f8cff" stroke-width="1.5"/>`;
+  html += `<text x="${rootX}" y="${rootY + 4}" text-anchor="middle" font-size="10" font-weight="500" fill="#4f8cff" font-family="JetBrains Mono,monospace">root</text>`;
+
+  // Char nodes
+  nodes.forEach(n => {
+    let fill, stroke, sw, textFill;
+    if (n.active) {
+      fill = n.isEnd ? '#1a3a2a' : '#1e2235';
+      stroke = n.isEnd ? '#3ddc84' : '#ffc96b';
+      sw = 1.5; textFill = n.isEnd ? '#3ddc84' : '#ffc96b';
+    } else if (n.isEnd) {
+      fill = '#0f2a1a'; stroke = '#3ddc84'; sw = 1; textFill = '#5aeea0';
+    } else {
+      fill = '#1a1e2a'; stroke = '#343a52'; sw = 0.5; textFill = '#9aa3c2';
+    }
+    const fs = n.r <= 7 ? 7 : n.r <= 10 ? 9 : 11;
+    html += `<circle cx="${n.x.toFixed(1)}" cy="${n.y}" r="${n.r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    html += `<text x="${n.x.toFixed(1)}" y="${n.y + fs/2 - 1}" text-anchor="middle" font-size="${fs}" font-weight="${n.active ? '700' : '400'}" fill="${textFill}" font-family="JetBrains Mono,monospace">${n.label}</text>`;
+  });
+
+  // Overflow indicator
+  if (rootChildren.length > MAX_L1) {
+    html += `<text x="${W - 8}" y="${rootY + LEVEL_H + 5}" text-anchor="end" font-size="10" fill="#5c6480" font-family="JetBrains Mono,monospace">+${rootChildren.length - MAX_L1} more…</text>`;
+  }
+
+  svg.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+//  BOOT — load tech preset by default
+// ═══════════════════════════════════════════
+loadPreset('tech');
+document.getElementById('preset-log').textContent = 'Tech preset loaded. Try searching "s" or "al".';
+window.addEventListener('resize', () => renderTrie(activePrefix));
+</script>
+</body>
+</html>
